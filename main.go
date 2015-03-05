@@ -1,50 +1,94 @@
 package main
 
 import (
-	"bytes"
-	"io/ioutil"
+	"bufio"
+	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
+	"sync"
+
+	"github.com/atotto/clipboard"
 )
+
+// re matches FILE:LINE.
+var re = regexp.MustCompile(`\w+\.go:\d+`)
+
+var matched bool
+var mu sync.Mutex
 
 func main() {
 	log.SetFlags(0)
 
-	// Read all of STDIN in.
-	buf, err := ioutil.ReadAll(os.Stdin)
+	// Execute "go" command with the same arguments.
+	cmd := exec.Command("go", os.Args[1:]...)
+
+	// Pass through standard input.
+	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		log.Fatal(err)
 	}
+	go io.Copy(stdin, os.Stdin)
 
-	// Match the first filename+line.
-	var match string
-	buf = regexp.MustCompile(`\w+\.go:\d+`).ReplaceAllFunc(buf, func(b []byte) []byte {
-		if match == "" && !bytes.HasPrefix(b, []byte("testing.go:")) {
-			match = string(b)
-			b = append([]byte("\033[1m"), b...)
-			b = append(b, []byte("\033[0m")...)
-		}
-		return b
-	})
+	// Create a wait group for stdout/stderr.
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-	// Write out stdin back to stdout.
-	os.Stdout.Write(buf)
-
-	// Copy match to clipboard.
-	cmd := exec.Command("pbcopy")
-	in, err := cmd.StdinPipe()
+	// Pass through standard out.
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatal(err)
 	}
+	go func() {
+		processPipe(os.Stdout, stdout)
+		wg.Done()
+	}()
+
+	// Read through stderr and decorate.
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	go func() {
+		processPipe(os.Stderr, stderr)
+		wg.Done()
+	}()
+
+	// Execute command.
 	if err := cmd.Start(); err != nil {
 		log.Fatal(err)
-	} else if _, err = in.Write([]byte(match)); err != nil {
+	}
+
+	// Wait for pipes to finish reading and then wait for command to exit.
+	wg.Wait()
+	if err = cmd.Wait(); err != nil {
 		log.Fatal(err)
-	} else if err = in.Close(); err != nil {
-		log.Fatal(err)
-	} else if err = cmd.Wait(); err != nil {
-		log.Fatal(err)
+	}
+}
+
+// processPipe scans the src by line and attempts to match the first FILE:LINE.
+func processPipe(dst io.Writer, src io.Reader) {
+	scanner := bufio.NewScanner(src)
+	for scanner.Scan() {
+		line := scanner.Text()
+		func() {
+			mu.Lock()
+			defer mu.Unlock()
+
+			if !matched {
+				if m := re.FindString(line); m != "" && !strings.HasPrefix(m, "testing.go") {
+					// Copy match.
+					clipboard.WriteAll(m)
+
+					// Bold line.
+					line = "\033[1m" + line + "\033[0m"
+					matched = true
+				}
+			}
+			fmt.Fprintln(dst, line)
+		}()
 	}
 }
