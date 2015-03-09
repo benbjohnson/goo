@@ -7,9 +7,11 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/atotto/clipboard"
 )
@@ -61,6 +63,15 @@ func main() {
 	if err := cmd.Start(); err != nil {
 		log.Fatal(err)
 	}
+
+	// Forward signals to command.
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Kill, os.Signal(syscall.SIGQUIT))
+		for sig := range c {
+			cmd.Process.Signal(sig)
+		}
+	}()
 
 	// Wait for pipes to finish reading and then wait for command to exit.
 	wg.Wait()
