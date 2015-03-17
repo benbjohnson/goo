@@ -17,7 +17,7 @@ import (
 )
 
 // re matches FILE:LINE.
-var re = regexp.MustCompile(`\w+\.go:\d+`)
+var re = regexp.MustCompile(`[a-zA-Z0-9_\/]+\.go:\d+`)
 
 var matched bool
 var mu sync.Mutex
