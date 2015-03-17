@@ -17,7 +17,7 @@ import (
 )
 
 // re matches FILE:LINE.
-var re = regexp.MustCompile(`[a-zA-Z0-9_\/]+\.go:\d+`)
+var re = regexp.MustCompile(`\S+\.go:\d+`)
 
 var matched bool
 var mu sync.Mutex
@@ -91,6 +91,9 @@ func processPipe(dst io.Writer, src io.Reader) {
 
 			if !matched {
 				if m := re.FindString(line); m != "" && !strings.HasPrefix(m, "testing.go") {
+					// Remove "./" prefix.
+					m = strings.TrimPrefix(m, "./")
+
 					// Copy match.
 					clipboard.WriteAll(m)
 
