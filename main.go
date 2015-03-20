@@ -90,7 +90,7 @@ func processPipe(dst io.Writer, src io.Reader) {
 			defer mu.Unlock()
 
 			if !matched {
-				if m := re.FindString(line); m != "" && !strings.HasPrefix(m, "testing.go") {
+				if m := re.FindString(line); m != "" && !strings.Contains(m, "testing.go") {
 					// Remove "./" prefix.
 					m = strings.TrimPrefix(m, "./")
 
