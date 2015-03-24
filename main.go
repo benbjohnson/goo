@@ -94,6 +94,11 @@ func processPipe(dst io.Writer, src io.Reader) {
 					// Remove "./" prefix.
 					m = strings.TrimPrefix(m, "./")
 
+					// Remove present working directory prefix.
+					if pwd, _ := os.Getwd(); pwd != "" {
+						m = strings.TrimPrefix(m, pwd+"/")
+					}
+
 					// Copy match.
 					clipboard.WriteAll(m)
 
