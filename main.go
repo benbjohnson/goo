@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"syscall"
 
 	"github.com/atotto/clipboard"
 )
@@ -67,7 +66,7 @@ func main() {
 	// Forward signals to command.
 	go func() {
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Kill, os.Signal(syscall.SIGQUIT))
+		signal.Notify(c)
 		for sig := range c {
 			cmd.Process.Signal(sig)
 		}
