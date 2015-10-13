@@ -74,8 +74,12 @@ func main() {
 
 	// Wait for pipes to finish reading and then wait for command to exit.
 	wg.Wait()
-	if err = cmd.Wait(); err != nil {
-		log.Fatal(err)
+
+	// Print a visual beep to cause the dock icon to bounce.
+	fmt.Print("\x07")
+
+	if err := cmd.Wait(); err != nil {
+		os.Exit(1)
 	}
 }
 
