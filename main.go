@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -16,7 +17,7 @@ import (
 )
 
 // re matches FILE:LINE.
-var re = regexp.MustCompile(`\S+\.go:\d+`)
+var re = regexp.MustCompile(`(.+?)(\S+\.go):(\d+)(.+)`)
 
 var matched bool
 var mu sync.Mutex
@@ -85,6 +86,10 @@ func main() {
 
 // processPipe scans the src by line and attempts to match the first FILE:LINE.
 func processPipe(dst io.Writer, src io.Reader) {
+	// Find absolute path of present wording directory.
+	pwd, _ := os.Getwd()
+	pwd, _ = filepath.Abs(pwd)
+
 	scanner := bufio.NewScanner(src)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -92,25 +97,39 @@ func processPipe(dst io.Writer, src io.Reader) {
 			mu.Lock()
 			defer mu.Unlock()
 
-			if !matched {
-				if m := re.FindString(line); m != "" && !strings.Contains(m, "testing.go") {
-					// Remove "./" prefix.
-					m = strings.TrimPrefix(m, "./")
-
-					// Remove present working directory prefix.
-					if pwd, _ := os.Getwd(); pwd != "" {
-						m = strings.TrimPrefix(m, pwd+"/")
-					}
-
-					// Copy match.
-					clipboard.WriteAll(m)
-
-					// Bold line.
-					line = "\033[1m" + line + "\033[0m"
-					matched = true
-				}
+			// Ignore if already matched a line.
+			if matched {
+				fmt.Fprintln(dst, line)
+				return
 			}
+
+			// Find .go path.
+			m := re.FindStringSubmatch(line)
+			if len(m) == 0 {
+				fmt.Fprintln(dst, line)
+				return
+			}
+			prefix, path, num, suffix := m[1], m[2], m[3], m[4]
+
+			// Determine absolute path of Go file.
+			path, _ = filepath.Abs(path)
+
+			// Ignore if path is not relative to pwd.
+			rel, err := filepath.Rel(pwd, path)
+			if err != nil || strings.HasPrefix(rel, "..") {
+				fmt.Fprintln(dst, line)
+				return
+			}
+
+			// Copy match.
+			clipboard.WriteAll(rel + ":" + num)
+
+			// Bold line.
+			line = prefix + pwd + "/\033[7m" + rel + ":" + num + "\033[0m" + suffix
 			fmt.Fprintln(dst, line)
+
+			// Ensure no more lines match.
+			matched = true
 		}()
 	}
 }
