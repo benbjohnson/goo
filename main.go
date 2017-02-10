@@ -17,7 +17,7 @@ import (
 )
 
 // re matches FILE:LINE.
-var re = regexp.MustCompile(`(.+?)(\S+\.go):(\d+)(.+)`)
+var re = regexp.MustCompile(`(.*?)(\S+?\.(?:ego|go)):(\d+)(.*)`)
 
 var matched bool
 var mu sync.Mutex
@@ -112,20 +112,26 @@ func processPipe(dst io.Writer, src io.Reader) {
 			prefix, path, num, suffix := m[1], m[2], m[3], m[4]
 
 			// Determine absolute path of Go file.
-			path, _ = filepath.Abs(path)
+			abs, _ := filepath.Abs(path)
 
 			// Ignore if path is not relative to pwd.
-			rel, err := filepath.Rel(pwd, path)
+			rel, err := filepath.Rel(pwd, abs)
 			if err != nil || strings.HasPrefix(rel, "..") {
 				fmt.Fprintln(dst, line)
 				return
+			}
+
+			// Show base path if it was originally in the line.
+			var base string
+			if strings.HasPrefix(path, "/") {
+				base = pwd + "/"
 			}
 
 			// Copy match.
 			clipboard.WriteAll(rel + ":" + num)
 
 			// Bold line.
-			line = prefix + pwd + "/\033[7m" + rel + ":" + num + "\033[0m" + suffix
+			line = prefix + base + "\033[7m" + rel + ":" + num + "\033[0m" + suffix
 			fmt.Fprintln(dst, line)
 
 			// Ensure no more lines match.
