@@ -76,12 +76,12 @@ func main() {
 	// Wait for pipes to finish reading and then wait for command to exit.
 	wg.Wait()
 
-	// Print a visual beep to cause the dock icon to bounce.
-	fmt.Print("\x07")
-
 	if err := cmd.Wait(); err != nil {
+		fmt.Print("\x07\x07") // beep twice on error.
 		os.Exit(1)
 	}
+
+	fmt.Print("\x07") // beep once on success
 }
 
 // processPipe scans the src by line and attempts to match the first FILE:LINE.
