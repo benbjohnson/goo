@@ -114,9 +114,9 @@ func processPipe(dst io.Writer, src io.Reader) {
 			// Determine absolute path of Go file.
 			abs, _ := filepath.Abs(path)
 
-			// Ignore if path is not relative to pwd.
+			// Ignore if path is not relative to pwd or is in vendor directory.
 			rel, err := filepath.Rel(pwd, abs)
-			if err != nil || strings.HasPrefix(rel, "..") {
+			if err != nil || strings.HasPrefix(rel, "..") || strings.HasPrefix(rel, "vendor/") {
 				fmt.Fprintln(dst, line)
 				return
 			}
