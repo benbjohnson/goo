@@ -1,0 +1,3 @@
+package: github.com/benbjohnson/goo
+import:
+- package: github.com/atotto/clipboard
