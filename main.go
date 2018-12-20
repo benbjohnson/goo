@@ -17,7 +17,7 @@ import (
 )
 
 // re matches FILE:LINE.
-var re = regexp.MustCompile(`(.*?)(\S+?\.(?:ego|go)):(\d+):(?:(\d+):)(.*)`)
+var re = regexp.MustCompile(`(.*?)(\S+?\.(?:ego|go)):(\d+):(?:(\d+):)?(.*)`)
 
 var matched bool
 var mu sync.Mutex
