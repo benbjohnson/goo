@@ -25,21 +25,9 @@ var mu sync.Mutex
 func main() {
 	log.SetFlags(0)
 
-	// Use go binary specified in environment variable.
-	binPath := "go"
-	if v := os.Getenv("GO"); v != "" {
-		binPath = v
-	}
-
 	// Execute "go" command with the same arguments.
-	cmd := exec.Command(binPath, os.Args[1:]...)
-
-	// Pass through standard input.
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		log.Fatal(err)
-	}
-	go io.Copy(stdin, os.Stdin)
+	cmd := exec.Command("go", os.Args[1:]...)
+	cmd.Stdin = os.Stdin
 
 	// Create a wait group for stdout/stderr.
 	var wg sync.WaitGroup
