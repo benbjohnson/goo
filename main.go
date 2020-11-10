@@ -25,8 +25,14 @@ var mu sync.Mutex
 func main() {
 	log.SetFlags(0)
 
+	// Determine binary path.
+	binPath := "go"
+	if s := os.Getenv("GO"); s != "" {
+		binPath = s
+	}
+
 	// Execute "go" command with the same arguments.
-	cmd := exec.Command("go", os.Args[1:]...)
+	cmd := exec.Command(binPath, os.Args[1:]...)
 	cmd.Stdin = os.Stdin
 
 	// Create a wait group for stdout/stderr.
